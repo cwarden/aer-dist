@@ -24,6 +24,30 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Check for a Go toolchain
+      id: go-toolchain
+      shell: bash
+      run: |
+        set -euo pipefail
+        if command -v go >/dev/null; then
+          echo "found=true" >> "${GITHUB_OUTPUT}"
+        else
+          echo "found=false" >> "${GITHUB_OUTPUT}"
+        fi
+
+    # The helper commands under cmd/actions are built with `go run`, and not
+    # every runner image ships Go; macOS images do not. Install Go only when
+    # the runner has none so that a caller who set up their own Go version
+    # keeps it.
+    - name: Set up Go
+      if: steps.go-toolchain.outputs.found != 'true'
+      uses: actions/setup-go@v7
+      with:
+        go-version-file: ${{ github.action_path }}/go.mod
+        # The caller's repository is not a Go module, so there is no
+        # dependency file for setup-go to key a cache on.
+        cache: false
+
     - name: Resolve release tag
       id: resolve
       shell: bash
